@@ -20,9 +20,13 @@ public class WeightedUnionUF {
 
 	private int root(int i) {
 		/*
-		returns the root value of a node
+		traverses from a node to root, 
+		whilst doing so, sets the root of each
+		node to the new root
+		returns the new root value
 		*/
 		while (i != id[i]) {
+			id[i] = id[id[i]];
 			i = id[i];
 		}
 		return i;
