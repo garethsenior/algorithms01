@@ -1,13 +1,16 @@
 import java.util.Random;
+import java.util.ArrayList;
 
 public class Percolator {
 	
-	private int[] id;
-	private int[] sz;
+	private int[] id;					// parent ids
+	private int[] sz;					// size of the tree
+	private boolean[] node_state; 		// true = open, false = closed
 	private int width;
 	private int height;
-	private int nodes;
+	private int nodes; 					// number of nodes
 	private Random rand = new Random();
+	private int debug_level = 0;		// the hgiher the number the more verbose the logs
 
 	public Percolator(int W, int H) {
 		/*
@@ -17,15 +20,27 @@ public class Percolator {
 		Create the initial size array, to begin
 		with all nodes are size 1
 		*/
-		nodes = W*H+2;
+		nodes = (W*H)+2;
 		id = new int[nodes];
 		sz = new int[nodes];
+		node_state = new boolean[nodes];
+
 		width = W;
 		height = H;
 		for (int i=0; i<nodes; i++) {
 			id[i] = i;
 			sz[i] = 1;
-			StdOut.println(i + " vs " + nodes + " length: " + id.length);
+			node_state[i] = false;
+			log(10, i + " vs " + nodes + " length: " + id.length);
+		}
+		// the 'virtual' nodes are the only open ones
+		node_state[0] = true;
+		node_state[nodes-1] = true;
+	}
+
+	private void log(int level, String str) {
+		if (level <= debug_level) {
+			StdOut.println(str);
 		}
 	}
 
@@ -71,6 +86,8 @@ public class Percolator {
 		Returns 1 for a successful new union
 		Returns 0 if no new union is created.
 		*/
+		log(5, "Union(" + p + "," + q+ ")");
+		if (!(node_state[p] && node_state[q])) return 0;
 		int i = root(p);
 		int j = root(q);
 		if (i == j) return 0;
@@ -85,7 +102,7 @@ public class Percolator {
 		return 1;
 	}
 
-	public int unionise_node(int x) {
+	private int unionise_node(int x) {
 		/*
 		where x is the node number....
 		we'll attempt to union with the node above, left, right and below...
@@ -97,35 +114,46 @@ public class Percolator {
 		int rght = x+1;
 		int above = x-width;
 		int below = x+width;
-		if ((lft >= 0) && (lft%width != 0)) {
+		// we only do lft and right nodes if they're on the same row.
+		if ((lft > 0) && (lft%width != 0)) {
 			links =+ union(x, lft);
 		}
-		if ((rght < id.length) && (rght%width != 1)) {
+		if ((rght < nodes-1) && (rght%width != 1)) {
 			links =+ union(x, rght);
 		}
-		if (above > 0) {
-			links =+ union(x, above);
-		}
-		if (below < nodes) {
-			links =+ union(x, below);
-		}
+		// if above and below are outside of the grid, we link to the 'virtual' nodes
+		if (above < 0) above = 0;
+		links =+ union(x, above);
+		if (below > nodes-1) below = nodes-1;
+		links =+ union(x, below);
 		return links;
 	}
 
-	public int get_random_closed_node() {
+	public void open_random_closed_node() {
+		/*
+		mutates the state of the node_state array
+		calls unionise_node to union ot open neighbours
+		returns a string report
+		*/
 		int[] closed_nodes = get_closed_nodes();
-		return closed_nodes[rand.nextInt(closed_nodes.length)];
+		int new_node = closed_nodes[rand.nextInt(closed_nodes.length)];
+		node_state[new_node] = true;
+		int links = unionise_node(new_node);
+		log(5, "Opened Node " + new_node + " created " + links + " new links");
 	}
 
-	public int[] get_closed_nodes() {
-		int[] nodes = new int[0];
-		for (int i=0; i<id.length; i++) {
-			if (i == id[i]) {
-				nodes = new int[nodes.length+1];
-				nodes[nodes.length-1] = i;
+	private int[] get_closed_nodes() {
+		/*
+		returns a list of indices that refer to 'closed' nodes in the id list
+		*/
+		ArrayList<Integer> closed_nodes = new ArrayList<Integer>();
+		for (int i=0; i<node_state.length; i++) {
+			if (node_state[i] == false) {
+				closed_nodes.add(i);
 			}
 		}
-		return nodes;
+		int[] closed_nodes_list = closed_nodes.stream().mapToInt(i -> i).toArray();
+		return closed_nodes_list;
 	}
 }
 
